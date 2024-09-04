@@ -11,31 +11,37 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
     - name: Set up CMake
-      uses: microsoft/setup-cmake@v4
+      uses: twxs/cmake-action@v2
       with:
-        cmake-version: '3.24.0'  # Specify the CMake version you need
+        cmake-version: '3.23'
+
+    - name: Set up Visual Studio
+      uses: microsoft/setup-msbuild@v1
+
+    - name: Install Dependencies
+      run: |
+        choco install git cmake
+        # Optionally install other dependencies required for OpenMVG
 
     - name: Configure CMake
       run: |
         mkdir build
         cd build
-        cmake .. -G "Visual Studio 16 2019" -A x64 ^
-          -DOpenMVG_USE_PYTHON=OFF ^
-          -DOpenMVG_USE_CUDA=OFF ^
-          -DCMAKE_CXX_FLAGS="/wd4267"
+        cmake -G "Visual Studio 16 2019" -A x64 .. # Adjust generator and architecture if needed
 
     - name: Build OpenMVG
       run: |
         cd build
-        cmake --build . --config Release
+        msbuild openMVG.sln /p:Configuration=Release /p:Platform=x64
 
-    - name: Package Artifacts
-      uses: actions/upload-artifact@v3
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
       with:
-        name: openMVG-release
-        path: build/bin
+        name: openMVG-build
+        path: build/Release

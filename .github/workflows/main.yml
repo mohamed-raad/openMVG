@@ -1,0 +1,41 @@
+name: Build OpenMVG on Windows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up CMake
+      uses: microsoft/setup-cmake@v4
+      with:
+        cmake-version: '3.24.0'  # Specify the CMake version you need
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Visual Studio 16 2019" -A x64 ^
+          -DOpenMVG_USE_PYTHON=OFF ^
+          -DOpenMVG_USE_CUDA=OFF ^
+          -DCMAKE_CXX_FLAGS="/wd4267"
+
+    - name: Build OpenMVG
+      run: |
+        cd build
+        cmake --build . --config Release
+
+    - name: Package Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: openMVG-release
+        path: build/bin

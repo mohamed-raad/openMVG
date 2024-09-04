@@ -1,0 +1,48 @@
+name: Build OpenMVG
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up CMake
+      uses: actions/setup-cmake@v1
+      with:
+        cmake-version: 3.21.2
+
+    - name: Install dependencies
+      run: |
+        # Install Chocolatey (if not already installed)
+        @powershell -NoProfile -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
+        # Install Boost (version compatible with OpenMVG)
+        choco install boost --version=1.76.0
+        # Install Eigen
+        choco install eigen --version=3.3.9
+        # Install additional dependencies if required (e.g., OpenCV)
+        # choco install opencv --version=4.5.1
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Visual Studio 16 2019" -A x64 -DOpenMVG_USE_PYTHON=OFF -DOpenMVG_USE_CUDA=OFF
+
+    - name: Build OpenMVG
+      run: |
+        cd build
+        cmake --build . --config Release
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: openMVG-binaries
+        path: build/Release/

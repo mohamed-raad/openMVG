@@ -11,18 +11,22 @@ on:
 
 jobs:
   build-tests:
-    name: Build on Windows
+    name: Build and Test on Windows
     runs-on: windows-latest
     env:
       CTEST_OUTPUT_ON_FAILURE: 1
     steps:
       - uses: actions/checkout@v2
 
-      - name: Git submodule
+      - name: Create Build Directory
         run: |
           if (-Not (Test-Path -Path ".\build")) {
             New-Item -ItemType Directory -Path .\build
           }
+        shell: pwsh
+
+      - name: Git Submodule Update
+        run: |
           git submodule update -i
         shell: pwsh
 
@@ -42,7 +46,7 @@ jobs:
           cmake --build . --config Release --parallel 4
         shell: pwsh
 
-      - name: Unit Tests
+      - name: Run Unit Tests
         working-directory: ./build
         run: |
           ctest -j$(Get-ComputerInfo | Select-Object -ExpandProperty NumberOfLogicalProcessors) --build-config Release

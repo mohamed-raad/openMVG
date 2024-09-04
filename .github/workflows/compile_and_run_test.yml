@@ -1,15 +1,15 @@
-name: CI
+name: CI-external-deps
 
 on:
-  push:
-    branches: [main, master, develop, develop_keypoint_orientation_sfm]
   pull_request:
-    branches: [main, master, develop, develop_keypoint_orientation_sfm]
-  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+    branches: [develop]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build-tests:
-    name: Build on Windows
+    name: Windows - external deps
     runs-on: windows-latest
     env:
       CTEST_OUTPUT_ON_FAILURE: 1
@@ -18,17 +18,48 @@ jobs:
 
       - name: Git submodule
         run: |
-          mkdir ./build
+          mkdir .\build
           git submodule update -i
+        shell: pwsh
+
+      - name: 3rd Party libs
+        run: |
+          # Install necessary tools and libraries
+          choco install cmake git
+
+          # Install Eigen
+          Invoke-WebRequest -Uri "https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.zip" -OutFile "eigen-3.4.0.zip"
+          Expand-Archive -Path "eigen-3.4.0.zip" -DestinationPath "eigen"
+          Move-Item -Path "eigen\eigen-3.4.0" -Destination "C:\Program Files\eigen" -Force
+
+          # Install Ceres Solver
+          git clone https://github.com/ceres-solver/ceres-solver.git -b 2.1.0 C:\ceres-solver
+          cd C:\ceres-solver
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DMINIGLOG=ON ..
+          cmake --build . --config Release --parallel 4
+          cmake --install . --prefix "C:\Program Files\ceres-solver"
+          cd ../..
+          Remove-Item -Recurse -Force C:\ceres-solver
+
+          # Install additional libraries
+          choco install vcpkg
+          vcpkg install coinor-libclp libjpeg-turbo libpng libtiff
+        shell: pwsh
 
       - name: Configure CMake
         working-directory: ./build
         run: |
-          cmake ../src ^
-          -DOpenMVG_BUILD_TESTS=ON ^
-          -DOpenMVG_BUILD_EXAMPLES=ON ^
-          -DOpenMVG_BUILD_SOFTWARES=ON ^
-          -DSCHUR_SPECIALIZATIONS=OFF
+          cmake ..\src `
+          -DOpenMVG_BUILD_SHARED=ON `
+          -DOpenMVG_BUILD_TESTS=ON `
+          -DOpenMVG_BUILD_EXAMPLES=ON `
+          -DOpenMVG_BUILD_SOFTWARES=ON `
+          -DTARGET_ARCHITECTURE=core `
+          -DCOINUTILS_INCLUDE_DIR_HINTS="C:\Program Files\coinor-libclp\include" `
+          -DCLP_INCLUDE_DIR_HINTS="C:\Program Files\coinor-libclp\include" `
+          -DOSI_INCLUDE_DIR_HINTS="C:\Program Files\coinor-libclp\include"
         shell: pwsh
 
       - name: Build

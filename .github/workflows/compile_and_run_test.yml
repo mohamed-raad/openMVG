@@ -18,7 +18,9 @@ jobs:
 
       - name: Git submodule
         run: |
-          mkdir .\build
+          if (-Not (Test-Path -Path ".\build")) {
+            New-Item -ItemType Directory -Path .\build
+          }
           git submodule update -i
         shell: pwsh
 
@@ -33,9 +35,14 @@ jobs:
           Move-Item -Path "eigen\eigen-3.4.0" -Destination "C:\Program Files\eigen" -Force
 
           # Install Ceres Solver
+          if (Test-Path -Path "C:\ceres-solver") {
+            Remove-Item -Recurse -Force C:\ceres-solver
+          }
           git clone https://github.com/ceres-solver/ceres-solver.git -b 2.1.0 C:\ceres-solver
           cd C:\ceres-solver
-          mkdir build
+          if (-Not (Test-Path -Path "build")) {
+            New-Item -ItemType Directory -Path build
+          }
           cd build
           cmake -DCMAKE_BUILD_TYPE=Release -DMINIGLOG=ON ..
           cmake --build . --config Release --parallel 4
